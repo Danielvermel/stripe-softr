@@ -1,9 +1,20 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Only allow POST requests
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ error: 'Method not allowed. Only POST is supported.' });
   }
 
   try {
@@ -35,8 +46,6 @@ export default async function handler(req, res) {
       type: 'account_onboarding',
     });
 
-    // TODO: Update Airtable with account ID (we'll add this next)
-    
     // Return success response
     res.status(200).json({
       success: true,
