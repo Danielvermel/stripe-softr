@@ -4,15 +4,13 @@
     "description": "Stripe Connect marketplace for healthcare consultations",
     "main": "index.js",
     "scripts": {
-      "dev": "vercel dev",
-      "build": "vercel build"
+        "dev": "vercel dev"
     },
     "dependencies": {
-      "stripe": "^14.0.0",
-      "airtable": "^0.12.2"
+        "stripe": "^14.0.0",
+        "airtable": "^0.12.2"
     },
     "engines": {
-      "node": "18.x"
+        "node": "18.x"
     }
-  }
-  
+}
