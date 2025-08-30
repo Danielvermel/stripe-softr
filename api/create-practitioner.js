@@ -43,7 +43,7 @@ export default async function handler(req, res) {
             type: "account_onboarding",
         });
 
-        // Update Airtable - use main Practitioners table (not Stripe - Practitioners)
+        // ✅ FIXED - Update the correct table using table ID
         const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
         await base("tblNkUUlYzNxMZM9U").update(practitionerId, {
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
             success: true,
             accountId: account.id,
             onboardingUrl: accountLink.url,
-            message: "Practitioner account created and saved to Airtable!",
+            message: "Practitioner account created and saved to Stripe Accounts table!",
         });
     } catch (error) {
         console.error("Error:", error);
