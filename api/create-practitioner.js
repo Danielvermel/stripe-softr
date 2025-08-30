@@ -93,7 +93,7 @@ export default async function handler(req, res) {
       apiKey: process.env.AIRTABLE_API_KEY
     }).base('appLSZSnT9kgWCxW1'); // Replace with your actual base ID
     
-    const records = await base('Stripe - Practitioners')
+    const records = await base('tblNkUUlYzNxMZM9U')
       .select({ maxRecords: 1 })
       .firstPage();
     
