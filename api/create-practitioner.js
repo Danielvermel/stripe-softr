@@ -43,21 +43,17 @@ export default async function handler(req, res) {
             type: "account_onboarding",
         });
 
-        // ✅ CORRECTED - Update Airtable with proper syntax
+        // ✅ FIXED - Use single record update method
         const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
-        await base("tblNkUUlYzNxMZM9U").update([
-            {
-                id: practitionerId,
-                fields: {
-                    stripe_account_id: account.id,
-                    onboarding_url: accountLink.url,
-                    onboarding_completed: false,
-                    charges_enabled: false,
-                    payouts_enabled: false,
-                },
-            },
-        ]);
+        await base("tblNkUUlYzNxMZM9U").update(practitionerId, {
+            stripe_account_id: account.id,
+            onboarding_url: accountLink.url,
+            onboarding_status: "Link Sent",
+            onboarding_completed: false,
+            charges_enabled: false,
+            payouts_enabled: false,
+        });
 
         res.json({
             success: true,
