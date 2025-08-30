@@ -20,35 +20,35 @@ export default async function handler(req, res) {
       practitionerId, 
       patientEmail, 
       consultationPrice, 
-      platformCommission, 
       consultationDetails,
       returnUrl 
     } = body;
 
-    // Validation
-    if (!practitionerId || !patientEmail || !consultationPrice || !platformCommission || !returnUrl) {
-      return res.status(400).json({
-        error: 'Missing required fields'
-      });
+    if (!practitionerId || !patientEmail || !consultationPrice || !returnUrl) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Initialize Airtable
     const base = new Airtable({apiKey: process.env.AIRTABLE_API_KEY}).base(process.env.AIRTABLE_BASE_ID);
+
+    // Get commission settings from Airtable
+    const commissionRecords = await base('Commission Settings').select({maxRecords: 1}).firstPage();
+    const commissionRate = commissionRecords[0].get('commission_rate'); // e.g., 0.10 (10%)
+    const fixedFee = commissionRecords[0].get('fixed_fee') * 100; // Convert £2.00 to 200 pence
+
+    // Calculate platform commission dynamically
+    const percentageCommission = Math.round(consultationPrice * commissionRate);
+    const platformCommission = percentageCommission + fixedFee;
+    const practitionerAmount = consultationPrice - platformCommission;
 
     // Get practitioner's Stripe account ID
     const practitionerRecord = await base('tblNkUUlYzNxMZM9U').find(practitionerId);
     const stripeAccountId = practitionerRecord.get('stripe_account_id');
 
     if (!stripeAccountId) {
-      return res.status(400).json({
-        error: 'Practitioner has not created Stripe account yet'
-      });
+      return res.status(400).json({ error: 'Practitioner has not created Stripe account yet' });
     }
 
-    // Calculate amounts
-    const practitionerAmount = consultationPrice - platformCommission;
-
-    // Create Stripe Checkout Session with correct Connect syntax
+    // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
           currency: 'gbp',
           product_data: {
             name: consultationDetails || 'Health Consultation',
-            description: `Consultation with practitioner`
+            description: 'Consultation with practitioner'
           },
           unit_amount: consultationPrice,
         },
@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       },
     });
 
-    // Create transaction record in Airtable
+    // Create transaction record
     const transactionRecord = await base('Transactions').create([{
       fields: {
         patient_email: patientEmail,
@@ -96,9 +96,14 @@ export default async function handler(req, res) {
       amounts: {
         total: consultationPrice / 100,
         platformCommission: platformCommission / 100,
-        practitionerAmount: practitionerAmount / 100
+        practitionerAmount: practitionerAmount / 100,
+        commissionBreakdown: {
+          percentageCommission: percentageCommission / 100,
+          fixedFee: fixedFee / 100,
+          rate: `${commissionRate * 100}%`
+        }
       },
-      message: 'Checkout session with payment splitting created successfully!'
+      message: 'Checkout session created with dynamic commission!'
     });
 
   } catch (error) {
