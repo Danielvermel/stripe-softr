@@ -75,7 +75,7 @@ export default async function handler(req, res) {
     });
 
     // Create transaction record in Airtable
-    const transactionRecord = await base('Transactions').create([{
+    const transactionRecord = await base('tblKAIATQsZvoLOzN').create([{
       fields: {
         patient_email: patientEmail,
         practitioner_id: [practitionerId],
