@@ -57,7 +57,7 @@ export default async function handler(req, res) {
                 fields: {
                     practitioner_id: practitionerId, // Link to main Practitioners record
                     email: email,
-                    name: name,
+                    practitioner_name: name,
                     stripe_account_id: account.id,
                     onboarding_url: accountLink.url,
                     onboarding_status: "Link Sent",
