@@ -84,35 +84,31 @@
 //   }
 // }
 
-const Airtable = require("airtable");
+const Airtable = require('airtable');
 
 export default async function handler(req, res) {
-    try {
-        console.log("Testing Airtable connection...");
-        console.log("API Key exists:", !!process.env.AIRTABLE_API_KEY);
-        console.log("Base ID exists:", !!process.env.AIRTABLE_BASE_ID);
-
-        const base = new Airtable({
-            apiKey: process.env.AIRTABLE_API_KEY,
-        }).base(process.env.AIRTABLE_BASE_ID);
-
-        // Just try to read records from your table
-        const records = await base("Stripe - Practitioners").select({ maxRecords: 3 }).firstPage();
-
-        res.json({
-            success: true,
-            message: "Airtable connection works perfectly!",
-            recordCount: records.length,
-            firstRecordId: records[0]?.id || "No records found",
-            tableFound: "Stripe - Practitioners table accessible",
-        });
-    } catch (error) {
-        console.error("Airtable error:", error);
-        res.status(500).json({
-            error: "Airtable connection failed",
-            details: error.message,
-            apiKeyExists: !!process.env.AIRTABLE_API_KEY,
-            baseIdExists: !!process.env.AIRTABLE_BASE_ID,
-        });
-    }
+  try {
+    // Use your ACTUAL base ID directly (temporarily)
+    const base = new Airtable({
+      apiKey: process.env.AIRTABLE_API_KEY
+    }).base('appLSZSnT9kgWCxW1'); // Replace with your actual base ID
+    
+    const records = await base('Stripe - Practitioners')
+      .select({ maxRecords: 1 })
+      .firstPage();
+    
+    res.json({
+      success: true,
+      message: 'Direct base ID works!',
+      recordCount: records.length
+    });
+    
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Still failed',
+      details: error.message
+    });
+  }
 }
+
+
