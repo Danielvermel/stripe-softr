@@ -5,6 +5,22 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
 export default async function handler(req, res) {
+    // Debug environment variables
+    console.log("AIRTABLE_API_KEY exists:", !!process.env.AIRTABLE_API_KEY);
+    console.log("AIRTABLE_BASE_ID exists:", !!process.env.AIRTABLE_BASE_ID);
+    console.log("STRIPE_SECRET_KEY exists:", !!process.env.STRIPE_SECRET_KEY);
+
+    if (!process.env.AIRTABLE_API_KEY) {
+        return res.status(500).json({ error: "AIRTABLE_API_KEY not found in environment" });
+    }
+
+    if (!process.env.AIRTABLE_BASE_ID) {
+        return res.status(500).json({ error: "AIRTABLE_BASE_ID not found in environment" });
+    }
+
+    // Rest of your code...
+    const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
+
     if (req.method !== "POST") {
         return res.status(405).json({ error: "Method not allowed" });
     }
@@ -48,7 +64,7 @@ export default async function handler(req, res) {
         });
 
         // Update Airtable practitioner record with Stripe account ID
-        await base("Practitioners").update(practitionerId, {
+        await base("Stripe - Practitioners").update(practitionerId, {
             stripe_account_id: account.id,
             onboarding_completed: false,
             charges_enabled: false,
