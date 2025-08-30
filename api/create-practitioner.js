@@ -24,43 +24,30 @@ export default async function handler(req, res) {
             });
         }
 
-        // Create Stripe Express account
-        const account = await stripe.accounts.create({
-            type: "express",
-            capabilities: {
-                card_payments: { requested: true },
-                transfers: { requested: true },
-            },
-            business_type: "individual",
-            email: email,
-        });
-
-        // Create onboarding link
-        const accountLink = await stripe.accountLinks.create({
-            account: account.id,
-            refresh_url: returnUrl,
-            return_url: returnUrl,
-            type: "account_onboarding",
-        });
-
-        // ✅ Use the EXACT field names from your screenshot
+        // ✅ DEBUG: Check existing field names first
         const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
+        
+        try {
+            const existingRecord = await base("Stripe - Practitioners").find(practitionerId);
+            console.log("Available field names:", Object.keys(existingRecord.fields));
+            
+            // Return the field names for debugging
+            return res.json({
+                debug: true,
+                availableFields: Object.keys(existingRecord.fields),
+                message: "Field names discovered - check console and update your code"
+            });
+            
+        } catch (debugError) {
+            console.error("Debug error:", debugError);
+            return res.status(500).json({
+                error: "Debug failed",
+                details: debugError.message
+            });
+        }
 
-        await base("Stripe - Practitioners").update(practitionerId, {
-            stripe_account_id: account.id,
-            onboarding_url: accountLink.url,
-            onboarding_status: "Link Sent",
-            onboarding_completed: false,
-            charges_enabled: false,
-            payouts_enabled: false,
-        });
-
-        res.json({
-            success: true,
-            accountId: account.id,
-            onboardingUrl: accountLink.url,
-            message: "Practitioner account created and saved to Airtable!",
-        });
+        // ... rest of your Stripe code (commented out for debugging)
+        
     } catch (error) {
         console.error("Error:", error);
         res.status(500).json({
