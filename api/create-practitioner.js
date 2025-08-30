@@ -2,8 +2,6 @@ const Airtable = require("airtable");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
-    console.log("🚀 API Handler Started");
-
     if (req.method !== "POST") {
         return res.status(405).json({ error: "Method not allowed" });
     }
@@ -18,8 +16,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: "No body received" });
         }
 
-        const { practitionerId, email, returnUrl } = body;
-        console.log("📝 Processing practitioner:", { practitionerId, email });
+        const { practitionerId, email, returnUrl, name } = body; // ✅ ADD NAME HERE
 
         if (!practitionerId || !email || !returnUrl) {
             return res.status(400).json({
@@ -27,7 +24,9 @@ export default async function handler(req, res) {
             });
         }
 
-        console.log("💳 Creating Stripe account...");
+        console.log("💳 Creating Stripe account for:", name || email);
+
+        // ✅ USE NAME IN STRIPE ACCOUNT CREATION
         const account = await stripe.accounts.create({
             type: "express",
             capabilities: {
@@ -36,8 +35,10 @@ export default async function handler(req, res) {
             },
             business_type: "individual",
             email: email,
+            business_profile: {
+                name: name || "HealGuid Practitioner", // ✅ ADD NAME TO BUSINESS PROFILE
+            },
         });
-        console.log("✅ Stripe account created:", account.id);
 
         console.log("🔗 Creating onboarding link...");
         const accountLink = await stripe.accountLinks.create({
@@ -46,17 +47,16 @@ export default async function handler(req, res) {
             return_url: returnUrl,
             type: "account_onboarding",
         });
-        console.log("✅ Onboarding link created");
 
         console.log("📝 Creating record in Stripe Accounts table...");
         const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
-        // CREATE a new record instead of UPDATE
         const createdRecord = await base("tblNkUUlYzNxMZM9U").create([
             {
                 fields: {
-                    practitioner_id: practitionerId, // Link to main Practitioners record
+                    practitioner_id: [practitionerId],
                     email: email,
+                    practitioner_name: name, // ✅ SAVE NAME TO AIRTABLE
                     stripe_account_id: account.id,
                     onboarding_url: accountLink.url,
                     onboarding_status: "Link Sent",
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
             },
         ]);
 
-        console.log("✅ Record created in Stripe Accounts table:", createdRecord[0].id);
+        console.log("✅ Record created successfully");
 
         res.json({
             success: true,
