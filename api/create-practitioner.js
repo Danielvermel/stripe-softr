@@ -1,47 +1,35 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-// Disable automatic body parsing
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-// Function to parse raw request body
-function parseBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
-    req.on('end', () => {
-      try {
-        resolve(JSON.parse(body));
-      } catch (err) {
-        reject(err);
-      }
-    });
-  });
-}
-
 export default async function handler(req, res) {
+  // Debug logging
+  console.log('Method:', req.method);
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed. Only POST is supported.' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Parse the raw request body
-    const data = await parseBody(req);
-    const { practitionerId, email, returnUrl } = data;
+    // Handle different body formats
+    let body;
+    if (typeof req.body === 'string') {
+      body = JSON.parse(req.body);
+    } else if (req.body) {
+      body = req.body;
+    } else {
+      return res.status(400).json({ error: 'No body received' });
+    }
 
-    // Validate required fields
+    const { practitionerId, email, returnUrl } = body;
+
     if (!practitionerId || !email || !returnUrl) {
       return res.status(400).json({ 
-        error: 'Missing required fields: practitionerId, email, returnUrl' 
+        error: 'Missing fields',
+        received: body
       });
     }
 
-    // Create Express account
     const account = await stripe.accounts.create({
       type: 'express',
       capabilities: {
@@ -52,7 +40,6 @@ export default async function handler(req, res) {
       email: email,
     });
 
-    // Create onboarding link
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
       refresh_url: returnUrl,
@@ -60,18 +47,17 @@ export default async function handler(req, res) {
       type: 'account_onboarding',
     });
 
-    // Return success response
-    return res.status(200).json({
+    res.json({
       success: true,
       accountId: account.id,
       onboardingUrl: accountLink.url,
-      message: 'Practitioner account created successfully'
+      message: 'Success!'
     });
 
   } catch (error) {
-    console.error('Error creating practitioner account:', error);
-    return res.status(500).json({ 
-      error: 'Failed to create practitioner account',
+    console.error('Error:', error);
+    res.status(500).json({ 
+      error: 'Server error',
       details: error.message 
     });
   }
