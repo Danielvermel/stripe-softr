@@ -26,28 +26,26 @@ export default async function handler(req, res) {
 
         // ✅ DEBUG: Check existing field names first
         const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
-        
+
         try {
-            const existingRecord = await base("Stripe - Practitioners").find(practitionerId);
+            const existingRecord = await base("tblNkUUlYzNxMZM9U").find(practitionerId);
             console.log("Available field names:", Object.keys(existingRecord.fields));
-            
+
             // Return the field names for debugging
             return res.json({
                 debug: true,
                 availableFields: Object.keys(existingRecord.fields),
-                message: "Field names discovered - check console and update your code"
+                message: "Field names discovered - check console and update your code",
             });
-            
         } catch (debugError) {
             console.error("Debug error:", debugError);
             return res.status(500).json({
                 error: "Debug failed",
-                details: debugError.message
+                details: debugError.message,
             });
         }
 
         // ... rest of your Stripe code (commented out for debugging)
-        
     } catch (error) {
         console.error("Error:", error);
         res.status(500).json({
