@@ -43,10 +43,10 @@ export default async function handler(req, res) {
             type: "account_onboarding",
         });
 
-        // ✅ FIXED - Use single record update method
+        // ✅ Use the EXACT field names from your screenshot
         const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
-        await base("tblNkUUlYzNxMZM9U").update(practitionerId, {
+        await base("Stripe - Practitioners").update(practitionerId, {
             stripe_account_id: account.id,
             onboarding_url: accountLink.url,
             onboarding_status: "Link Sent",
