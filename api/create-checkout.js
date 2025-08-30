@@ -29,7 +29,7 @@ export default async function handler(req, res) {
         // Initialize Airtable
         const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
-        // Get practitioner's Stripe account ID from Airtable
+        // Get practitioner's Stripe account ID
         const practitionerRecord = await base("tblNkUUlYzNxMZM9U").find(practitionerId);
         const stripeAccountId = practitionerRecord.get("stripe_account_id");
 
@@ -39,29 +39,10 @@ export default async function handler(req, res) {
             });
         }
 
-        // Check if practitioner has completed Stripe onboarding
-        const account = await stripe.accounts.retrieve(stripeAccountId);
-        const transfersEnabled = account.capabilities?.transfers === "active";
-        const chargesEnabled = account.capabilities?.card_payments === "active";
-
-        if (!transfersEnabled || !chargesEnabled) {
-            return res.status(400).json({
-                error: "Practitioner must complete Stripe onboarding before accepting payments",
-                onboardingUrl: practitionerRecord.get("onboarding_url"),
-                accountStatus: {
-                    transfersEnabled,
-                    chargesEnabled,
-                    requirementsRemaining: account.requirements?.currently_due?.length || 0,
-                    detailsSubmitted: account.details_submitted,
-                },
-                message: "Please complete Stripe verification to accept payments",
-            });
-        }
-
         // Calculate amounts
         const practitionerAmount = consultationPrice - platformCommission;
 
-        // Create Stripe Checkout Session with payment splitting
+        // Create Stripe Checkout Session with correct Connect syntax
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
             line_items: [
@@ -70,9 +51,9 @@ export default async function handler(req, res) {
                         currency: "gbp",
                         product_data: {
                             name: consultationDetails || "Health Consultation",
-                            description: `Consultation with ${practitionerRecord.get("Email") || "practitioner"}`,
+                            description: `Consultation with practitioner`,
                         },
-                        unit_amount: consultationPrice, // Price in pence
+                        unit_amount: consultationPrice,
                     },
                     quantity: 1,
                 },
@@ -81,15 +62,10 @@ export default async function handler(req, res) {
             success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: returnUrl,
             customer_email: patientEmail,
-            metadata: {
-                practitioner_id: practitionerId,
-                platform_commission: platformCommission.toString(),
-                practitioner_amount: practitionerAmount.toString(),
-            },
             payment_intent_data: {
-                application_fee_amount: platformCommission, // Your commission
+                application_fee_amount: platformCommission,
                 transfer_data: {
-                    destination: stripeAccountId, // Practitioner's account
+                    destination: stripeAccountId,
                 },
             },
         });
@@ -99,8 +75,8 @@ export default async function handler(req, res) {
             {
                 fields: {
                     patient_email: patientEmail,
-                    practitioner_id: [practitionerId], // Link to practitioner record
-                    consultation_price: consultationPrice / 100, // Convert pence to pounds
+                    practitioner_id: [practitionerId],
+                    consultation_price: consultationPrice / 100,
                     platform_commission: platformCommission / 100,
                     practitioner_amount: practitionerAmount / 100,
                     stripe_session_id: session.id,
@@ -120,7 +96,7 @@ export default async function handler(req, res) {
                 platformCommission: platformCommission / 100,
                 practitionerAmount: practitionerAmount / 100,
             },
-            message: "Checkout session created successfully!",
+            message: "Checkout session with payment splitting created successfully!",
         });
     } catch (error) {
         console.error("Error creating checkout:", error);
@@ -130,6 +106,3 @@ export default async function handler(req, res) {
         });
     }
 }
-
-
-
