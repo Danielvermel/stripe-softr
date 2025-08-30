@@ -1,24 +1,47 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+// Disable automatic body parsing
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+// Function to parse raw request body
+function parseBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed. Only POST is supported.' });
   }
 
   try {
-    console.log('Request body:', req.body);
-    console.log('Request body type:', typeof req.body);
+    // Parse the raw request body
+    const data = await parseBody(req);
+    const { practitionerId, email, returnUrl } = data;
 
-    // In Vercel serverless functions, req.body is automatically parsed
-    const { practitionerId, email, returnUrl } = req.body;
-
+    // Validate required fields
     if (!practitionerId || !email || !returnUrl) {
       return res.status(400).json({ 
-        error: 'Missing required fields',
-        received: req.body
+        error: 'Missing required fields: practitionerId, email, returnUrl' 
       });
     }
 
+    // Create Express account
     const account = await stripe.accounts.create({
       type: 'express',
       capabilities: {
@@ -29,6 +52,7 @@ export default async function handler(req, res) {
       email: email,
     });
 
+    // Create onboarding link
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
       refresh_url: returnUrl,
@@ -36,7 +60,8 @@ export default async function handler(req, res) {
       type: 'account_onboarding',
     });
 
-    res.status(200).json({
+    // Return success response
+    return res.status(200).json({
       success: true,
       accountId: account.id,
       onboardingUrl: accountLink.url,
@@ -44,8 +69,8 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ 
+    console.error('Error creating practitioner account:', error);
+    return res.status(500).json({ 
       error: 'Failed to create practitioner account',
       details: error.message 
     });
